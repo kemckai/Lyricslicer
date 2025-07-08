@@ -140,7 +140,7 @@ export default function LyricSliceClient() {
       <header className="flex flex-col items-center text-center mb-8">
         <Logo />
         <p className="max-w-2xl mt-2 text-muted-foreground">
-          Paste your lyrics, get instant analysis, and generate creative remixes. Refine your songwriting with the power of AI.
+          Paste your lyrics, get instant analysis, and generate creative remixes. Refine your songwriting.
         </p>
       </header>
 
