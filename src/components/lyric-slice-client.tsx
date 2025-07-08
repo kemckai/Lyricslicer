@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 
 import type { AnalyzeLyricsOutput } from '@/ai/flows/analyze-lyrics';
-import { handleAnalyze, handleRemix } from '@/app/actions';
+import { handleAnalyze } from '@/app/actions';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -77,18 +77,26 @@ export default function LyricSliceClient() {
   const onRemix = (values: z.infer<typeof formSchema>) => {
     setRemixes([]);
     setActiveTab('remixes');
+    setEditedRemixes({});
 
-    startRemixTransition(async () => {
-      const formData = new FormData();
-      formData.append('lyrics', values.lyrics);
-      formData.append('numRemixes', values.numRemixes.toString());
-      const result = await handleRemix(formData);
-      if (result.error) {
-        toast({ variant: 'destructive', title: 'Remix Failed', description: result.error });
+    startRemixTransition(() => {
+      const lines = values.lyrics.split('\n').filter(line => line.trim() !== '');
+      if (lines.length === 0) {
         setRemixes([]);
-      } else {
-        setRemixes(result.remixes || []);
+        return;
       }
+
+      const newRemixes = Array.from({ length: values.numRemixes }, () => {
+        // Fisher-Yates shuffle for each new remix
+        const shuffledLines = [...lines];
+        for (let j = shuffledLines.length - 1; j > 0; j--) {
+          const k = Math.floor(Math.random() * (j + 1));
+          [shuffledLines[j], shuffledLines[k]] = [shuffledLines[k], shuffledLines[j]];
+        }
+        return shuffledLines.join('\n');
+      });
+
+      setRemixes(newRemixes);
     });
   };
 
@@ -218,7 +226,7 @@ export default function LyricSliceClient() {
               <Card>
                 <CardHeader>
                   <CardTitle>Remixed Versions</CardTitle>
-                  <CardDescription>AI-generated variations of your lyrics. Edit them freely.</CardDescription>
+                  <CardDescription>Shuffled variations of your lyrics. Edit them freely.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {isRemixing && Array.from({ length: form.getValues('numRemixes') }).map((_, i) => (
