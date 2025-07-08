@@ -19,8 +19,7 @@ import { handleAnalyze } from '@/app/actions';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Form, FormControl, FormField, FormItem, FormMessage } from '@/components/ui/form';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -30,7 +29,6 @@ import { Logo } from '@/components/logo';
 
 const formSchema = z.object({
   lyrics: z.string().min(20, 'Please enter at least 20 characters of lyrics.').max(4000, 'Lyrics cannot exceed 4000 characters.'),
-  numRemixes: z.coerce.number().min(1).max(5),
 });
 
 type SavedLyric = {
@@ -44,7 +42,7 @@ export default function LyricSliceClient() {
   const [isRemixing, startRemixTransition] = useTransition();
 
   const [analysis, setAnalysis] = useState<AnalyzeLyricsOutput | null>(null);
-  const [remixes, setRemixes] = useState<string[]>([]);
+  const [remix, setRemix] = useState<string | null>(null);
   const [savedLyrics, setSavedLyrics] = useState<SavedLyric[]>([]);
   const [activeTab, setActiveTab] = useState('remixes');
 
@@ -52,7 +50,6 @@ export default function LyricSliceClient() {
     resolver: zodResolver(formSchema),
     defaultValues: {
       lyrics: '',
-      numRemixes: 3,
     },
   });
 
@@ -75,28 +72,25 @@ export default function LyricSliceClient() {
   };
 
   const onRemix = (values: z.infer<typeof formSchema>) => {
-    setRemixes([]);
+    setRemix(null);
     setActiveTab('remixes');
-    setEditedRemixes({});
+    setEditedRemix(null);
 
     startRemixTransition(() => {
       const lines = values.lyrics.split('\n').filter(line => line.trim() !== '');
       if (lines.length === 0) {
-        setRemixes([]);
+        setRemix(null);
         return;
       }
 
-      const newRemixes = Array.from({ length: values.numRemixes }, () => {
-        // Fisher-Yates shuffle for each new remix
-        const shuffledLines = [...lines];
-        for (let j = shuffledLines.length - 1; j > 0; j--) {
-          const k = Math.floor(Math.random() * (j + 1));
-          [shuffledLines[j], shuffledLines[k]] = [shuffledLines[k], shuffledLines[j]];
-        }
-        return shuffledLines.join('\n');
-      });
-
-      setRemixes(newRemixes);
+      // Fisher-Yates shuffle for the remix
+      const shuffledLines = [...lines];
+      for (let j = shuffledLines.length - 1; j > 0; j--) {
+        const k = Math.floor(Math.random() * (j + 1));
+        [shuffledLines[j], shuffledLines[k]] = [shuffledLines[k], shuffledLines[j]];
+      }
+      
+      setRemix(shuffledLines.join('\n'));
     });
   };
 
@@ -129,17 +123,12 @@ export default function LyricSliceClient() {
     toast({ title: 'Download started!' });
   };
   
-  const [editedRemixes, setEditedRemixes] = useState<Record<number, string>>({});
+  const [editedRemix, setEditedRemix] = useState<string | null>(null);
   const [editedSaved, setEditedSaved] = useState<Record<string, string>>({});
-
-  const handleRemixEdit = (index: number, newText: string) => {
-    setEditedRemixes(prev => ({...prev, [index]: newText}));
-  };
 
   const handleSavedEdit = (id: string, newText: string) => {
     setEditedSaved(prev => ({...prev, [id]: newText}));
   };
-
 
   const lyrics = form.watch('lyrics');
 
@@ -181,26 +170,7 @@ export default function LyricSliceClient() {
                   )}
                 />
               </CardContent>
-              <CardFooter className="flex flex-col sm:flex-row justify-between gap-4">
-                 <FormField
-                    control={form.control}
-                    name="numRemixes"
-                    render={({ field }) => (
-                      <FormItem className="flex items-center gap-2 space-y-0 w-full sm:w-auto">
-                        <FormLabel className="whitespace-nowrap">Remix versions</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={String(field.value)}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select number of remixes" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {[1, 2, 3, 4, 5].map(n => <SelectItem key={n} value={String(n)}>{n}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
-                      </FormItem>
-                    )}
-                  />
+              <CardFooter className="flex flex-col sm:flex-row justify-end gap-4">
                 <div className="flex gap-2 w-full sm:w-auto">
                   <Button type="button" variant="secondary" onClick={form.handleSubmit(onAnalyze)} disabled={isAnalyzing || !lyrics} className="w-full">
                     {isAnalyzing ? <Loader2 className="animate-spin" /> : <ScanLine />}
@@ -225,44 +195,44 @@ export default function LyricSliceClient() {
             <TabsContent value="remixes">
               <Card>
                 <CardHeader>
-                  <CardTitle>Remixed Versions</CardTitle>
-                  <CardDescription>Shuffled variations of your lyrics. Edit them freely.</CardDescription>
+                  <CardTitle>Remixed Version</CardTitle>
+                  <CardDescription>A shuffled variation of your lyrics. Edit it freely.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {isRemixing && Array.from({ length: form.getValues('numRemixes') }).map((_, i) => (
-                    <div key={i} className="space-y-2">
+                  {isRemixing && (
+                    <div className="space-y-2">
                       <Skeleton className="h-6 w-1/4" />
                       <Skeleton className="h-24 w-full" />
                     </div>
-                  ))}
-                  {!isRemixing && remixes.length === 0 && (
+                  )}
+                  {!isRemixing && !remix && (
                     <div className="text-center py-12 text-muted-foreground">
                       <Wand2 className="mx-auto h-12 w-12 mb-2" />
-                      <p>Your remixed lyrics will appear here.</p>
+                      <p>Your remixed lyric will appear here.</p>
                     </div>
                   )}
-                  {remixes.map((remix, i) => (
-                     <Card key={i} className="bg-background/50">
+                  {remix && (
+                     <Card className="bg-background/50">
                       <CardHeader>
-                        <CardTitle className="text-lg">Remix #{i + 1}</CardTitle>
+                        <CardTitle className="text-lg">Remix</CardTitle>
                       </CardHeader>
                       <CardContent>
                          <Textarea 
-                            value={editedRemixes[i] !== undefined ? editedRemixes[i] : remix}
-                            onChange={(e) => handleRemixEdit(i, e.target.value)}
+                            value={editedRemix !== null ? editedRemix : remix}
+                            onChange={(e) => setEditedRemix(e.target.value)}
                             className="min-h-[150px] text-base"
                           />
                       </CardContent>
                       <CardFooter className="justify-end gap-2">
-                         <Button variant="ghost" size="sm" onClick={() => handleCopyToClipboard(editedRemixes[i] !== undefined ? editedRemixes[i] : remix)}>
+                         <Button variant="ghost" size="sm" onClick={() => handleCopyToClipboard(editedRemix !== null ? editedRemix : remix)}>
                             <Copy className="h-4 w-4" />
                          </Button>
-                         <Button variant="ghost" size="sm" onClick={() => handleSave(editedRemixes[i] !== undefined ? editedRemixes[i] : remix)}>
+                         <Button variant="ghost" size="sm" onClick={() => handleSave(editedRemix !== null ? editedRemix : remix)}>
                             <Save className="h-4 w-4" />
                          </Button>
                       </CardFooter>
                      </Card>
-                  ))}
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>
