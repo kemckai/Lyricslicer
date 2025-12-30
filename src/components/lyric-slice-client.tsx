@@ -14,8 +14,7 @@ import {
   Wand2,
 } from 'lucide-react';
 
-import type { AnalyzeLyricsOutput } from '@/ai/flows/analyze-lyrics';
-import { handleAnalyze } from '@/app/actions';
+import { analyzeLyrics, type AnalyzeLyricsOutput } from '@/lib/analyze-lyrics';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -53,20 +52,18 @@ export default function LyricSliceClient() {
     },
   });
 
-  const onAnalyze = async (values: z.infer<typeof formSchema>) => {
+  const onAnalyze = (values: z.infer<typeof formSchema>) => {
     setAnalysis(null);
     setActiveTab('analysis');
 
-    startAnalyzeTransition(async () => {
-      const formData = new FormData();
-      formData.append('lyrics', values.lyrics);
-      const result = await handleAnalyze(formData);
-
-      if ('error' in result) {
-        toast({ variant: 'destructive', title: 'Analysis Failed', description: result.error });
-        setAnalysis(null);
-      } else {
+    startAnalyzeTransition(() => {
+      try {
+        const result = analyzeLyrics(values.lyrics);
         setAnalysis(result);
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+        toast({ variant: 'destructive', title: 'Analysis Failed', description: errorMessage });
+        setAnalysis(null);
       }
     });
   };
