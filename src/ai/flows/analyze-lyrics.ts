@@ -94,110 +94,119 @@ function countSyllablesInLine(line: string): number {
  * Analyzes lyrics for syllable counts and rhyme patterns
  * FREE - No API calls required!
  */
-export async function analyzeLyrics(input: AnalyzeLyricsInput): Promise<AnalyzeLyricsOutput> {
-  const {lyrics} = input;
-  const lines = lyrics.split('\n').map(line => line.trim()).filter(line => line.length > 0);
-  
-  if (lines.length === 0) {
-    return {
-      syllableAnalysis: 'No lyrics provided.',
-      rhymeAnalysis: 'No lyrics provided.',
-    };
-  }
-
-  // Syllable Analysis
-  const syllableData = lines.map((line, index) => {
-    const count = countSyllablesInLine(line);
-    return {line: index + 1, text: line, syllables: count};
-  });
-
-  const totalSyllables = syllableData.reduce((sum, data) => sum + data.syllables, 0);
-  const avgSyllables = (totalSyllables / lines.length).toFixed(1);
-  const minSyllables = Math.min(...syllableData.map(d => d.syllables));
-  const maxSyllables = Math.max(...syllableData.map(d => d.syllables));
-
-  let syllableAnalysis = `Total Lines: ${lines.length}\n`;
-  syllableAnalysis += `Total Syllables: ${totalSyllables}\n`;
-  syllableAnalysis += `Average Syllables per Line: ${avgSyllables}\n`;
-  syllableAnalysis += `Range: ${minSyllables} - ${maxSyllables} syllables\n\n`;
-  syllableAnalysis += `Line-by-Line Breakdown:\n`;
-  syllableAnalysis += syllableData.map(d => 
-    `Line ${d.line}: ${d.syllables} syllable${d.syllables !== 1 ? 's' : ''} - "${d.text.substring(0, 50)}${d.text.length > 50 ? '...' : ''}"`
-  ).join('\n');
-
-  // Rhyme Analysis
-  const lastWords = lines.map(line => getLastWord(line));
-  const rhymeGroups: {[key: string]: number[]} = {};
-  const rhymeScheme: string[] = [];
-  let rhymeLabel = 'A';
-  const usedLabels: {[key: string]: string} = {};
-
-  lines.forEach((line, index) => {
-    const lastWord = lastWords[index];
-    if (!lastWord) {
-      rhymeScheme.push('-');
-      return;
+export function analyzeLyrics(input: AnalyzeLyricsInput): AnalyzeLyricsOutput {
+  try {
+    const {lyrics} = input;
+    if (!lyrics || typeof lyrics !== 'string') {
+      throw new Error('Invalid lyrics input');
+    }
+    
+    const lines = lyrics.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+    
+    if (lines.length === 0) {
+      return {
+        syllableAnalysis: 'No lyrics provided.',
+        rhymeAnalysis: 'No lyrics provided.',
+      };
     }
 
-    // Check if this word rhymes with any previous line
-    let foundMatch = false;
-    for (let i = 0; i < index; i++) {
-      const prevWord = lastWords[i];
-      if (prevWord && wordsRhyme(lastWord, prevWord)) {
-        const prevLabel = rhymeScheme[i];
-        rhymeScheme.push(prevLabel);
-        usedLabels[lastWord] = prevLabel;
-        foundMatch = true;
-        break;
-      }
-    }
-
-    if (!foundMatch) {
-      // Check if we've seen this exact word before
-      if (usedLabels[lastWord]) {
-        rhymeScheme.push(usedLabels[lastWord]);
-      } else {
-        rhymeScheme.push(rhymeLabel);
-        usedLabels[lastWord] = rhymeLabel;
-        // Move to next letter
-        rhymeLabel = String.fromCharCode(rhymeLabel.charCodeAt(0) + 1);
-      }
-    }
-  });
-
-  let rhymeAnalysis = `Rhyme Scheme: ${rhymeScheme.join(' ')}\n\n`;
-  
-  // Group lines by rhyme
-  const rhymeMap: {[key: string]: number[]} = {};
-  rhymeScheme.forEach((label, index) => {
-    if (label !== '-') {
-      if (!rhymeMap[label]) rhymeMap[label] = [];
-      rhymeMap[label].push(index + 1);
-    }
-  });
-
-  const rhymeGroupsList = Object.entries(rhymeMap)
-    .filter(([_, lines]) => lines.length > 1)
-    .sort((a, b) => b[1].length - a[1].length);
-
-  if (rhymeGroupsList.length > 0) {
-    rhymeAnalysis += `Rhyming Patterns Found:\n`;
-    rhymeGroupsList.forEach(([label, lineNumbers]) => {
-      rhymeAnalysis += `  ${label}: Lines ${lineNumbers.join(', ')} (${lineNumbers.length} lines)\n`;
+    // Syllable Analysis
+    const syllableData = lines.map((line, index) => {
+      const count = countSyllablesInLine(line);
+      return {line: index + 1, text: line, syllables: count};
     });
-  } else {
-    rhymeAnalysis += `No clear rhyming patterns detected.\n`;
+
+    const totalSyllables = syllableData.reduce((sum, data) => sum + data.syllables, 0);
+    const avgSyllables = (totalSyllables / lines.length).toFixed(1);
+    const minSyllables = Math.min(...syllableData.map(d => d.syllables));
+    const maxSyllables = Math.max(...syllableData.map(d => d.syllables));
+
+    let syllableAnalysis = `Total Lines: ${lines.length}\n`;
+    syllableAnalysis += `Total Syllables: ${totalSyllables}\n`;
+    syllableAnalysis += `Average Syllables per Line: ${avgSyllables}\n`;
+    syllableAnalysis += `Range: ${minSyllables} - ${maxSyllables} syllables\n\n`;
+    syllableAnalysis += `Line-by-Line Breakdown:\n`;
+    syllableAnalysis += syllableData.map(d => 
+      `Line ${d.line}: ${d.syllables} syllable${d.syllables !== 1 ? 's' : ''} - "${d.text.substring(0, 50)}${d.text.length > 50 ? '...' : ''}"`
+    ).join('\n');
+
+    // Rhyme Analysis
+    const lastWords = lines.map(line => getLastWord(line));
+    const rhymeScheme: string[] = [];
+    let rhymeLabel = 'A';
+    const usedLabels: {[key: string]: string} = {};
+
+    lines.forEach((line, index) => {
+      const lastWord = lastWords[index];
+      if (!lastWord) {
+        rhymeScheme.push('-');
+        return;
+      }
+
+      // Check if this word rhymes with any previous line
+      let foundMatch = false;
+      for (let i = 0; i < index; i++) {
+        const prevWord = lastWords[i];
+        if (prevWord && wordsRhyme(lastWord, prevWord)) {
+          const prevLabel = rhymeScheme[i];
+          rhymeScheme.push(prevLabel);
+          usedLabels[lastWord] = prevLabel;
+          foundMatch = true;
+          break;
+        }
+      }
+
+      if (!foundMatch) {
+        // Check if we've seen this exact word before
+        if (usedLabels[lastWord]) {
+          rhymeScheme.push(usedLabels[lastWord]);
+        } else {
+          rhymeScheme.push(rhymeLabel);
+          usedLabels[lastWord] = rhymeLabel;
+          // Move to next letter
+          rhymeLabel = String.fromCharCode(rhymeLabel.charCodeAt(0) + 1);
+        }
+      }
+    });
+
+    let rhymeAnalysis = `Rhyme Scheme: ${rhymeScheme.join(' ')}\n\n`;
+    
+    // Group lines by rhyme
+    const rhymeMap: {[key: string]: number[]} = {};
+    rhymeScheme.forEach((label, index) => {
+      if (label !== '-') {
+        if (!rhymeMap[label]) rhymeMap[label] = [];
+        rhymeMap[label].push(index + 1);
+      }
+    });
+
+    const rhymeGroupsList = Object.entries(rhymeMap)
+      .filter(([_, lines]) => lines.length > 1)
+      .sort((a, b) => b[1].length - a[1].length);
+
+    if (rhymeGroupsList.length > 0) {
+      rhymeAnalysis += `Rhyming Patterns Found:\n`;
+      rhymeGroupsList.forEach(([label, lineNumbers]) => {
+        rhymeAnalysis += `  ${label}: Lines ${lineNumbers.join(', ')} (${lineNumbers.length} lines)\n`;
+      });
+    } else {
+      rhymeAnalysis += `No clear rhyming patterns detected.\n`;
+    }
+
+    rhymeAnalysis += `\nDetailed Rhyme Mapping:\n`;
+    lines.forEach((line, index) => {
+      const label = rhymeScheme[index];
+      const lastWord = lastWords[index];
+      rhymeAnalysis += `Line ${index + 1} (${label}): "${line}" - ending: "${lastWord}"\n`;
+    });
+
+    return {
+      syllableAnalysis,
+      rhymeAnalysis,
+    };
+  } catch (error) {
+    console.error('Error in analyzeLyrics:', error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    throw new Error(`Analysis failed: ${errorMessage}`);
   }
-
-  rhymeAnalysis += `\nDetailed Rhyme Mapping:\n`;
-  lines.forEach((line, index) => {
-    const label = rhymeScheme[index];
-    const lastWord = lastWords[index];
-    rhymeAnalysis += `Line ${index + 1} (${label}): "${line}" - ending: "${lastWord}"\n`;
-  });
-
-  return {
-    syllableAnalysis,
-    rhymeAnalysis,
-  };
 }
