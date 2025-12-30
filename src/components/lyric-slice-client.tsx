@@ -157,6 +157,7 @@ export default function LyricSliceClient() {
                     <FormItem>
                       <FormControl>
                         <Textarea
+                          id="lyrics-input"
                           placeholder="In a town of quiet streets, a silent heart still beats..."
                           className="min-h-[250px] text-base resize-y"
                           {...field}
@@ -218,6 +219,8 @@ export default function LyricSliceClient() {
                       </CardHeader>
                       <CardContent>
                          <Textarea 
+                            id="remix-textarea"
+                            name="remix"
                             value={editedRemix !== null ? editedRemix : remix}
                             onChange={(e) => setEditedRemix(e.target.value)}
                             className="min-h-[150px] text-base"
@@ -289,6 +292,8 @@ export default function LyricSliceClient() {
                   <Card key={lyric.id}>
                     <CardContent className="p-6">
                       <Textarea 
+                        id={`saved-lyric-${lyric.id}`}
+                        name={`saved-lyric-${lyric.id}`}
                         value={editedSaved[lyric.id] !== undefined ? editedSaved[lyric.id] : lyric.text}
                         onChange={(e) => handleSavedEdit(lyric.id, e.target.value)}
                         className="min-h-[180px] text-base" 
