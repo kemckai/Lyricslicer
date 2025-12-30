@@ -14,6 +14,7 @@ export async function handleAnalyze(formData: FormData): Promise<AnalyzeLyricsOu
     return result;
   } catch (error) {
     console.error('Analysis error:', error);
-    return { error: 'Failed to analyze lyrics. Please try again.' };
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    return { error: `Failed to analyze lyrics: ${errorMessage}` };
   }
 }

@@ -9,8 +9,18 @@
  * - AnalyzeLyricsOutput - The return type for the analyzeLyrics function.
  */
 
-import {syllable} from 'syllable';
 import {z} from 'zod';
+
+// Dynamic import for syllable to handle ES module compatibility
+let syllableFn: ((word: string) => number) | null = null;
+
+async function getSyllableCounter() {
+  if (!syllableFn) {
+    const syllableModule = await import('syllable');
+    syllableFn = syllableModule.syllable;
+  }
+  return syllableFn;
+}
 
 const AnalyzeLyricsInputSchema = z.object({
   lyrics: z.string().describe('The lyrics to analyze.'),
@@ -56,7 +66,8 @@ function wordsRhyme(word1: string, word2: string): boolean {
 /**
  * Counts syllables in a line
  */
-function countSyllablesInLine(line: string): number {
+async function countSyllablesInLine(line: string): Promise<number> {
+  const syllable = await getSyllableCounter();
   const words = line.trim().split(/\s+/).filter(w => w.length > 0);
   return words.reduce((total, word) => {
     // Remove punctuation for syllable counting
@@ -82,10 +93,12 @@ export async function analyzeLyrics(input: AnalyzeLyricsInput): Promise<AnalyzeL
   }
 
   // Syllable Analysis
-  const syllableData = lines.map((line, index) => {
-    const count = countSyllablesInLine(line);
-    return {line: index + 1, text: line, syllables: count};
-  });
+  const syllableData = await Promise.all(
+    lines.map(async (line, index) => {
+      const count = await countSyllablesInLine(line);
+      return {line: index + 1, text: line, syllables: count};
+    })
+  );
 
   const totalSyllables = syllableData.reduce((sum, data) => sum + data.syllables, 0);
   const avgSyllables = (totalSyllables / lines.length).toFixed(1);
