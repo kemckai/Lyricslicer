@@ -94,11 +94,18 @@ function countSyllablesInLine(line: string): number {
  * Analyzes lyrics for syllable counts and rhyme patterns
  * FREE - No API calls required!
  */
-export function analyzeLyrics(input: AnalyzeLyricsInput): AnalyzeLyricsOutput {
+export async function analyzeLyrics(input: AnalyzeLyricsInput): Promise<AnalyzeLyricsOutput> {
   try {
     const {lyrics} = input;
     if (!lyrics || typeof lyrics !== 'string') {
-      throw new Error('Invalid lyrics input');
+      throw new Error('Invalid lyrics input: lyrics must be a string');
+    }
+    
+    if (lyrics.trim().length === 0) {
+      return {
+        syllableAnalysis: 'No lyrics provided.',
+        rhymeAnalysis: 'No lyrics provided.',
+      };
     }
     
     const lines = lyrics.split('\n').map(line => line.trim()).filter(line => line.length > 0);
@@ -163,8 +170,20 @@ export function analyzeLyrics(input: AnalyzeLyricsInput): AnalyzeLyricsOutput {
         } else {
           rhymeScheme.push(rhymeLabel);
           usedLabels[lastWord] = rhymeLabel;
-          // Move to next letter
-          rhymeLabel = String.fromCharCode(rhymeLabel.charCodeAt(0) + 1);
+          // Move to next letter (A-Z, then AA, AB, etc.)
+          if (rhymeLabel === 'Z') {
+            rhymeLabel = 'AA';
+          } else if (rhymeLabel.length === 1) {
+            rhymeLabel = String.fromCharCode(rhymeLabel.charCodeAt(0) + 1);
+          } else {
+            // Handle AA, AB, etc.
+            const lastChar = rhymeLabel[rhymeLabel.length - 1];
+            if (lastChar === 'Z') {
+              rhymeLabel = rhymeLabel.slice(0, -1) + 'A' + 'A';
+            } else {
+              rhymeLabel = rhymeLabel.slice(0, -1) + String.fromCharCode(lastChar.charCodeAt(0) + 1);
+            }
+          }
         }
       }
     });
