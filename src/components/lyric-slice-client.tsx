@@ -62,7 +62,7 @@ export default function LyricSliceClient() {
       formData.append('lyrics', values.lyrics);
       const result = await handleAnalyze(formData);
 
-      if (result.error) {
+      if ('error' in result) {
         toast({ variant: 'destructive', title: 'Analysis Failed', description: result.error });
         setAnalysis(null);
       } else {
@@ -240,7 +240,7 @@ export default function LyricSliceClient() {
               <Card>
                 <CardHeader>
                   <CardTitle>Lyric Analysis</CardTitle>
-                  <CardDescription>AI-powered breakdown of syllable and rhyme patterns.</CardDescription>
+                  <CardDescription>Syllable counts and the end-rhyme scheme for these lyrics.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {isAnalyzing && (
