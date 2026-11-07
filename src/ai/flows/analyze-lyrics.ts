@@ -1,50 +1,28 @@
 'use server';
 
 /**
- * @fileOverview Analyzes lyrics for syllable count and rhyme patterns.
+ * @fileOverview Analyzes lyrics for syllable count and end-rhyme scheme.
  *
- * - analyzeLyrics - A function that analyzes the lyrics and returns the analysis.
- * - AnalyzeLyricsInput - The input type for the analyzeLyrics function.
- * - AnalyzeLyricsOutput - The return type for the analyzeLyrics function.
+ * Syllables and end rhymes are computed in-process. Analyze does not call
+ * Gemini and does not need GEMINI_API_KEY or GOOGLE_API_KEY. See README.md.
  */
 
-import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
+import {z} from 'zod';
+
+import {analyzeLyricsText} from '@/lib/lyric-analysis';
 
 const AnalyzeLyricsInputSchema = z.object({
-  lyrics: z.string().describe('The lyrics to analyze.'),
+  lyrics: z.string(),
 });
 export type AnalyzeLyricsInput = z.infer<typeof AnalyzeLyricsInputSchema>;
 
 const AnalyzeLyricsOutputSchema = z.object({
-  syllableAnalysis: z
-    .string()
-    .describe('Analysis of syllable counts in each line.'),
-  rhymeAnalysis: z.string().describe('Analysis of rhyme patterns in the lyrics.'),
+  syllableAnalysis: z.string(),
+  rhymeAnalysis: z.string(),
 });
 export type AnalyzeLyricsOutput = z.infer<typeof AnalyzeLyricsOutputSchema>;
 
 export async function analyzeLyrics(input: AnalyzeLyricsInput): Promise<AnalyzeLyricsOutput> {
-  return analyzeLyricsFlow(input);
+  const parsed = AnalyzeLyricsInputSchema.parse(input);
+  return AnalyzeLyricsOutputSchema.parse(analyzeLyricsText(parsed.lyrics));
 }
-
-const prompt = ai.definePrompt({
-  name: 'analyzeLyricsPrompt',
-  input: {schema: AnalyzeLyricsInputSchema},
-  output: {schema: AnalyzeLyricsOutputSchema},
-  prompt: `You are a professional lyric analyzer. Analyze the following lyrics for syllable count and rhyme patterns. Provide detailed analysis.
-
-Lyrics: {{{lyrics}}}`,
-});
-
-const analyzeLyricsFlow = ai.defineFlow(
-  {
-    name: 'analyzeLyricsFlow',
-    inputSchema: AnalyzeLyricsInputSchema,
-    outputSchema: AnalyzeLyricsOutputSchema,
-  },
-  async input => {
-    const {output} = await prompt(input);
-    return output!;
-  }
-);

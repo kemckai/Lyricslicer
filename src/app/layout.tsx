@@ -4,7 +4,7 @@ import { Toaster } from "@/components/ui/toaster"
 
 export const metadata: Metadata = {
   title: 'LyricSlice',
-  description: 'AI-powered lyric remixing and analysis tool',
+  description: 'Count syllables, see the rhyme scheme, and shuffle a remix of your lyrics.',
 };
 
 export default function RootLayout({
