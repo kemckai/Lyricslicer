@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+import * as RadioGroupPrimitive from '@radix-ui/react-radio-group';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -26,6 +27,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Logo } from '@/components/logo';
+import {
+  SLICE_MODE_HINTS,
+  SLICE_MODE_LABELS,
+  SLICE_MODE_RESULTS,
+  SLICE_MODES,
+  remixLyrics,
+  type SliceMode,
+} from '@/lib/slice-lyrics';
 
 const formSchema = z.object({
   lyrics: z.string().min(20, 'Please enter at least 20 characters of lyrics.').max(4000, 'Lyrics cannot exceed 4000 characters.'),
@@ -43,6 +52,8 @@ export default function LyricSliceClient() {
 
   const [analysis, setAnalysis] = useState<AnalyzeLyricsOutput | null>(null);
   const [remix, setRemix] = useState<string | null>(null);
+  const [sliceMode, setSliceMode] = useState<SliceMode>('line');
+  const [remixMode, setRemixMode] = useState<SliceMode>('line');
   const [savedLyrics, setSavedLyrics] = useState<SavedLyric[]>([]);
   const [activeTab, setActiveTab] = useState('remixes');
 
@@ -75,22 +86,11 @@ export default function LyricSliceClient() {
     setRemix(null);
     setActiveTab('remixes');
     setEditedRemix(null);
+    const mode = sliceMode;
 
     startRemixTransition(() => {
-      const lines = values.lyrics.split('\n').filter(line => line.trim() !== '');
-      if (lines.length === 0) {
-        setRemix(null);
-        return;
-      }
-
-      // Fisher-Yates shuffle for the remix
-      const shuffledLines = [...lines];
-      for (let j = shuffledLines.length - 1; j > 0; j--) {
-        const k = Math.floor(Math.random() * (j + 1));
-        [shuffledLines[j], shuffledLines[k]] = [shuffledLines[k], shuffledLines[j]];
-      }
-      
-      setRemix(shuffledLines.join('\n'));
+      setRemixMode(mode);
+      setRemix(remixLyrics(values.lyrics, mode));
     });
   };
 
@@ -170,8 +170,28 @@ export default function LyricSliceClient() {
                   )}
                 />
               </CardContent>
-              <CardFooter className="flex flex-col sm:flex-row justify-end gap-4">
-                <div className="flex gap-2 w-full sm:w-auto">
+              <CardFooter className="flex flex-col gap-4">
+                <div className="w-full space-y-2">
+                  <p id="slice-mode-label" className="text-sm font-medium">Slice by</p>
+                  <RadioGroupPrimitive.Root
+                    value={sliceMode}
+                    onValueChange={(value) => setSliceMode(value as SliceMode)}
+                    aria-labelledby="slice-mode-label"
+                    className="grid grid-cols-3 gap-1 rounded-md bg-muted p-1"
+                  >
+                    {SLICE_MODES.map((mode) => (
+                      <RadioGroupPrimitive.Item
+                        key={mode}
+                        value={mode}
+                        className="inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium text-muted-foreground ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 data-[state=checked]:bg-background data-[state=checked]:text-foreground data-[state=checked]:shadow-sm"
+                      >
+                        {SLICE_MODE_LABELS[mode]}
+                      </RadioGroupPrimitive.Item>
+                    ))}
+                  </RadioGroupPrimitive.Root>
+                  <p className="text-xs text-muted-foreground">{SLICE_MODE_HINTS[sliceMode]}</p>
+                </div>
+                <div className="flex gap-2 w-full sm:w-auto sm:self-end">
                   <Button type="button" variant="secondary" onClick={form.handleSubmit(onAnalyze)} disabled={isAnalyzing || !lyrics} className="w-full">
                     {isAnalyzing ? <Loader2 className="animate-spin" /> : <ScanLine />}
                     Analyze
@@ -196,7 +216,7 @@ export default function LyricSliceClient() {
               <Card>
                 <CardHeader>
                   <CardTitle>Remixed Version</CardTitle>
-                  <CardDescription>A shuffled variation of your lyrics. Edit it freely.</CardDescription>
+                  <CardDescription>{SLICE_MODE_RESULTS[remix ? remixMode : sliceMode]}</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {isRemixing && (
@@ -214,7 +234,7 @@ export default function LyricSliceClient() {
                   {remix && (
                      <Card className="bg-background/50">
                       <CardHeader>
-                        <CardTitle className="text-lg">Remix</CardTitle>
+                        <CardTitle className="text-lg">{SLICE_MODE_LABELS[remixMode]} remix</CardTitle>
                       </CardHeader>
                       <CardContent>
                          <Textarea 
