@@ -10,7 +10,7 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "test": "node --import tsx --test src/lib/lyric-analysis.test.ts"
+    "test": "node --import tsx --test src/lib/lyric-analysis.test.ts src/lib/slice-lyrics.test.ts"
   },
   "dependencies": {
     "@genkit-ai/googleai": "^1.13.0",
